@@ -1,5 +1,6 @@
 /.direnv
 *result*
+CAG_*
 
 ### Created by https://www.gitignore.io
 ### Haskell ###

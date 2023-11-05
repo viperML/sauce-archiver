@@ -7,13 +7,16 @@
 module Main (main) where
 
 import Blammo.Logging.Simple
+import Cli (CliArgs, readCli)
+import Control.Monad.IO.Class (MonadIO (liftIO))
+import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.Reader (ReaderT (runReaderT), ask)
 import Data.Aeson
 import Data.Text
+import Data.Text.Encoding (decodeUtf8)
 import Debug.Todo (todo)
 import GHC.Generics
 import Network.HTTP.Req
-import Data.Text.Encoding (decodeUtf8)
-import Control.Monad.IO.Class (MonadIO)
 
 data Resp = Resp
   { id :: Integer,
@@ -54,11 +57,27 @@ reqForPost' number = do
 decodeResponse :: BsResponse -> Either String Resp'
 decodeResponse response = fixResp <$> eitherDecodeStrict (responseBody response)
 
-runner :: LoggingT IO a -> IO a
-runner = runSimpleLoggingT
+logRunner :: LoggingT IO a -> IO a
+logRunner = runSimpleLoggingT
+
+data Env = Env
+  { cli :: CliArgs
+  }
+  deriving (Show, Generic)
+
+type App = LoggingT (ReaderT Env IO)
 
 main :: IO ()
-main = runner $ do
-  logInfo "Hello, world!"
-  r <- reqForPost' 6786211
-  return ()
+main = do
+  cli <- readCli
+  let env = Env {cli}
+
+  runReaderT
+    (runSimpleLoggingT main')
+    env
+
+main' :: App ()
+main' = do
+  env <- lift ask
+  logInfo $ "reading env" :# ["env" .= show env]
+  logInfo "Hello world!"

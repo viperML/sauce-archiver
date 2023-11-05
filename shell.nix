@@ -9,5 +9,6 @@ in
       pkgs.zlib
       haskellPackages.haskell-language-server
       haskellPackages.cabal-install
+      haskellPackages.cabal-fmt.bin
     ];
   }
