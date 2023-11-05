@@ -4,7 +4,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-cse #-}
 
-module Cli (readCli, CliArgs) where
+module Cli (readCli, CliArgs(..), cliArgs) where
 
 import System.Console.CmdArgs
 

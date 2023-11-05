@@ -4,7 +4,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 
-module Main (main) where
+module Main where
 
 import Blammo.Logging.Simple
 import Cli (CliArgs, readCli)
@@ -17,6 +17,7 @@ import Data.Text.Encoding (decodeUtf8)
 import Debug.Todo (todo)
 import GHC.Generics
 import Network.HTTP.Req
+import Prelude hiding (id)
 
 data Resp = Resp
   { id :: Integer,
@@ -67,14 +68,17 @@ data Env = Env
 
 type App = LoggingT (ReaderT Env IO)
 
-main :: IO ()
-main = do
+runApp :: App a -> IO a
+runApp app = do
   cli <- readCli
   let env = Env {cli}
 
   runReaderT
-    (runSimpleLoggingT main')
+    (runSimpleLoggingT app)
     env
+
+main :: IO ()
+main = runApp main'
 
 main' :: App ()
 main' = do
