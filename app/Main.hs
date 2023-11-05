@@ -9,8 +9,11 @@ module Main (main) where
 import Blammo.Logging.Simple
 import Data.Aeson
 import Data.Text
+import Debug.Todo (todo)
 import GHC.Generics
 import Network.HTTP.Req
+import Data.Text.Encoding (decodeUtf8)
+import Control.Monad.IO.Class (MonadIO)
 
 data Resp = Resp
   { id :: Integer,
@@ -33,7 +36,7 @@ instance ToJSON Resp'
 fixResp :: Resp -> Resp'
 fixResp Resp {id, tag_string_general, file_url} = Resp' {id, tag_string_general = splitOn " " tag_string_general, file_url}
 
-reqForPost :: (MonadHttp m, MonadLogger m) => Integer -> m BsResponse
+reqForPost :: Integer -> Req BsResponse
 reqForPost number =
   req
     GET
@@ -41,6 +44,12 @@ reqForPost number =
     NoReqBody
     bsResponse
     (header "User-Agent" "github/viperML")
+
+reqForPost' :: (MonadIO m, MonadLogger m) => Integer -> m BsResponse
+reqForPost' number = do
+  resp <- runReq defaultHttpConfig $ reqForPost number
+  logInfo $ decodeUtf8 (responseBody resp) :# []
+  return resp
 
 decodeResponse :: BsResponse -> Either String Resp'
 decodeResponse response = fixResp <$> eitherDecodeStrict (responseBody response)
@@ -51,8 +60,5 @@ runner = runSimpleLoggingT
 main :: IO ()
 main = runner $ do
   logInfo "Hello, world!"
-  let r = reqForPost 6786211
-  response <- runReq defaultHttpConfig r
-  let resp = decodeResponse response
-  logInfo $ "Response: " :# ["resp" .= resp]
+  r <- reqForPost' 6786211
   return ()
