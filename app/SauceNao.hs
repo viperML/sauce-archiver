@@ -24,27 +24,27 @@ import Network.HTTP.Client.MultipartFormData (partBS, partFile)
 import Network.HTTP.Req
 
 data SauceNaoResponse = SauceNaoResponse
-  { header :: SauceNaoHeader,
-    results :: [SauceNaoResult]
+  { header :: SauceNaoHeader
+  , results :: [SauceNaoResult]
   }
   deriving (Show, Generic)
 
 data SauceNaoHeader = SauceNaoHeader
-  { account_type :: Text,
-    long_remaining :: Integer,
-    short_remaining :: Integer
+  { account_type :: Text
+  , long_remaining :: Integer
+  , short_remaining :: Integer
   }
   deriving (Show, Generic)
 
 data SauceNaoResult = SauceNaoResult
-  { _header :: SauceNaoResultHeader,
-    _data :: Object
+  { _header :: SauceNaoResultHeader
+  , _data :: Object
   }
   deriving (Show, Generic)
 
 data SauceNaoResultHeader = SauceNaoResultHeader
-  { similarity :: Text,
-    thumbnail :: Text
+  { similarity :: Text
+  , thumbnail :: Text
   }
   deriving (Show, Generic)
 
@@ -58,7 +58,7 @@ instance FromJSON SauceNaoResponse
 instance FromJSON SauceNaoHeader
 
 instance FromJSON SauceNaoResult where
-  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = Prelude.drop 1}
+  parseJSON = genericParseJSON defaultOptions{fieldLabelModifier = Prelude.drop 1}
 
 instance FromJSON SauceNaoResultHeader
 

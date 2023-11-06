@@ -22,16 +22,16 @@ import System.Directory.Internal.Prelude (getEnv)
 import Prelude hiding (id)
 
 data Resp = Resp
-  { id :: Integer,
-    tag_string_general :: Text,
-    file_url :: Text
+  { id :: Integer
+  , tag_string_general :: Text
+  , file_url :: Text
   }
   deriving (Show, Generic)
 
 data Resp' = Resp'
-  { id :: Integer,
-    tag_string_general :: [Text],
-    file_url :: Text
+  { id :: Integer
+  , tag_string_general :: [Text]
+  , file_url :: Text
   }
   deriving (Show, Generic)
 
@@ -40,7 +40,7 @@ instance FromJSON Resp
 instance ToJSON Resp'
 
 fixResp :: Resp -> Resp'
-fixResp Resp {id, tag_string_general, file_url} = Resp' {id, tag_string_general = splitOn " " tag_string_general, file_url}
+fixResp Resp{id, tag_string_general, file_url} = Resp'{id, tag_string_general = splitOn " " tag_string_general, file_url}
 
 reqForPost :: Integer -> Req BsResponse
 reqForPost number =
@@ -64,8 +64,8 @@ logRunner :: LoggingT IO a -> IO a
 logRunner = runSimpleLoggingT
 
 data Env = Env
-  { cli :: CliArgs,
-    sauceNaoApiKey :: Text
+  { cli :: CliArgs
+  , sauceNaoApiKey :: Text
   }
   deriving (Show, Generic)
 
@@ -75,7 +75,7 @@ runApp :: App a -> IO a
 runApp app = do
   cli <- readCli
   sauceNaoApiKey <- pack <$> getEnv "SAUCENAO_APIKEY"
-  let env = Env {cli, sauceNaoApiKey}
+  let env = Env{cli, sauceNaoApiKey}
 
   runReaderT
     (runSimpleLoggingT app)
