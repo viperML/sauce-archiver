@@ -1,21 +1,21 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Files where
 
 import Blammo.Logging.Simple
-import Cli (CliArgs, inputFolder)
-import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.Trans.Class (MonadTrans (lift))
-import Control.Monad.Trans.Reader (ask)
+import Cli
+import Control.Monad.Reader
 import Debug.Todo (todo)
-import Main (App, Env (Env), cli)
+import Main
 import System.Directory (listDirectory)
 
-inputFiles :: App [FilePath]
+inputFiles :: (MonadReader Env m, MonadIO m, MonadLogger m) => m [FilePath]
 inputFiles = do
-  env <- lift ask
+  env :: Env <- ask
   let inputFolder = env.cli.inputFolder
   res <- liftIO $ listDirectory inputFolder
   logInfo $ "inputFiles: " :# ["msg" .= res, "folder" .= inputFolder]

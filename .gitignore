@@ -1,6 +1,7 @@
 /.direnv
 *result*
 CAG_*
+.env
 
 ### Created by https://www.gitignore.io
 ### Haskell ###

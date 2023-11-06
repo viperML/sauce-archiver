@@ -3,6 +3,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Main where
 
@@ -17,6 +18,7 @@ import Data.Text.Encoding (decodeUtf8)
 import Debug.Todo (todo)
 import GHC.Generics
 import Network.HTTP.Req
+import System.Directory.Internal.Prelude (getEnv)
 import Prelude hiding (id)
 
 data Resp = Resp
@@ -62,7 +64,8 @@ logRunner :: LoggingT IO a -> IO a
 logRunner = runSimpleLoggingT
 
 data Env = Env
-  { cli :: CliArgs
+  { cli :: CliArgs,
+    sauceNaoApiKey :: Text
   }
   deriving (Show, Generic)
 
@@ -71,7 +74,8 @@ type App = LoggingT (ReaderT Env IO)
 runApp :: App a -> IO a
 runApp app = do
   cli <- readCli
-  let env = Env {cli}
+  sauceNaoApiKey <- pack <$> getEnv "SAUCENAO_APIKEY"
+  let env = Env {cli, sauceNaoApiKey}
 
   runReaderT
     (runSimpleLoggingT app)
