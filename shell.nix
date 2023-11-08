@@ -10,5 +10,6 @@ in
       haskellPackages.haskell-language-server
       haskellPackages.cabal-install
       haskellPackages.cabal-fmt.bin
+      haskellPackages.threadscope.bin
     ];
   }

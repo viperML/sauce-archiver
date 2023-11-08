@@ -20,6 +20,9 @@ import GHC.Generics
 import Network.HTTP.Req
 import System.Directory.Internal.Prelude (getEnv)
 import Prelude hiding (id)
+import UnliftIO
+import GHC.Conc (threadDelay)
+import Data.Function ((&))
 
 data Resp = Resp
   { id :: Integer
@@ -51,11 +54,35 @@ reqForPost number =
     bsResponse
     (header "User-Agent" "github/viperML")
 
-reqForPost' :: (MonadIO m, MonadLogger m) => Integer -> m BsResponse
-reqForPost' number = do
-  resp <- runReq defaultHttpConfig $ reqForPost number
-  logInfo $ decodeUtf8 (responseBody resp) :# []
-  return resp
+-- reqForPost' :: (MonadUnliftIO m, MonadLogger m) => Integer -> m BsResponse
+-- reqForPost' number = do
+--   resp <- runReq defaultHttpConfig $ reqForPost number
+--   logInfo $ decodeUtf8 (responseBody resp) :# []
+--   return resp
+
+-- stuff :: (MonadUnliftIO m, MonadLogger m) => m ()
+-- stuff = do
+--   req1 <- liftIO $ async (reqForPost' 1)
+
+--   return ()
+
+stuff :: (MonadUnliftIO m, MonadLogger m) => m ()
+stuff = do
+    logInfo "Hello world!"
+    liftIO $ threadDelay 1000000
+    logInfo "Goodbye"
+
+
+other :: (MonadUnliftIO m, MonadLogger m) => m ()
+other = do
+    x1 <- async stuff
+    x2 <- async stuff
+    y1 <- wait x1
+    y2 <- wait x2
+
+    liftIO $ print (y1, y2)
+
+    return ()
 
 decodeResponse :: BsResponse -> Either String Resp'
 decodeResponse response = fixResp <$> eitherDecodeStrict (responseBody response)

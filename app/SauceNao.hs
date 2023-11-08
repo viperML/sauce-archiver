@@ -16,8 +16,9 @@ import Control.Monad.Reader
 import Data.Aeson (FromJSON (parseJSON), Object, Options (fieldLabelModifier), decodeStrict, genericParseJSON)
 import Data.Aeson.Types (defaultOptions)
 import Data.ByteString
-import Data.Text (Text)
+import Data.Text ( Text )
 import Debug.Todo (todo)
+import Data.Text.Read
 import GHC.Generics (Generic)
 import Main (Env, sauceNaoApiKey)
 import Network.HTTP.Client.MultipartFormData (partBS, partFile)
@@ -65,13 +66,25 @@ instance FromJSON SauceNaoResultHeader
 testFile :: FilePath
 testFile = "CAG_INPUT/test.jpg"
 
-queryFile :: (MonadIO m, MonadLogger m, MonadReader Env m) => FilePath -> m SauceNaoResponse
+data SauceError
+  = NoResults
+  | ShortTimeout
+  | LongTimeout
+  deriving (Show)
+
+data Sauce = Sauce
+  { similarity :: Float
+  , danbooru_id :: Integer
+  }
+  deriving (Show)
+
+type SauceResult = Either SauceError Sauce
+
+queryFile :: (MonadIO m, MonadLogger m, MonadReader Env m) => FilePath -> m SauceResult
 queryFile file = do
   logInfo $ "Querying SauceNao" :# ["file" .= file]
   env <- ask
   let apikey :: Text = env.sauceNaoApiKey
-
-  fileContents <- liftIO $ Data.ByteString.readFile file
 
   body :: ReqBodyMultipart <- reqBodyMultipart [partFile "file" file]
 
@@ -93,4 +106,4 @@ queryFile file = do
   let decoded :: Maybe SauceNaoResponse = decodeStrict $ responseBody resp
   logInfo $ "SauceNao decoded" :# ["decoded" .= show decoded]
 
-  return undefined
+  return $ todo "FIXME"

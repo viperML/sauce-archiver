@@ -9,26 +9,32 @@ build-type:    Simple
 common warnings
   ghc-options: -Wall -Werror=missing-fields
 
+common profiling
+  ghc-options: -threaded -rtsopts -g
+
 executable sauce-archiver
-  import:           warnings
+  import:           warnings, profiling
   hs-source-dirs:   app
   main-is:          Main.hs
   other-modules:
     Cli
     Files
     SauceNao
+    Scratch
 
   default-language: Haskell2010
   build-depends:
     , aeson
+    , async
     , base
     , Blammo
     , bytestring
     , cmdargs
     , directory
+    , http-client
+    , mtl
     , req
     , text
     , todo
     , transformers
-    , mtl
-    , http-client
+    , unliftio
