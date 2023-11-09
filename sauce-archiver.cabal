@@ -38,3 +38,4 @@ executable sauce-archiver
     , todo
     , transformers
     , unliftio
+    , filepath

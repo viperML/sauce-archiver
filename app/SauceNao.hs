@@ -1,9 +1,10 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE BangPatterns #-}
 
 module SauceNao where
 
@@ -13,23 +14,30 @@ import Control.Concurrent (threadDelay)
 import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Data.Aeson.Decoding (decodeStrict)
-import Data.Functor (($>))
+import Data.Functor (($>), (<&>))
 import Data.Text (Text)
 import qualified Data.Text as T
 import Debug.Todo (todo)
 import Network.HTTP.Client.MultipartFormData (partFile)
 import Network.HTTP.Req
-import SauceNaoTypes
-    ( SauceNaoResultData(danbooru_id),
-      SauceNaoResultHeader(similarity),
-      SauceNaoResult(_header, _data),
-      SauceNaoHeader(long_remaining, short_remaining),
-      SauceNaoResponse(..),
-      SauceResult,
-      Sauce(Sauce, danbooru_id, similarity, short_remaining,
-            long_remaining),
-      SauceError(Decode) )
+import SauceNaoTypes (
+    Sauce (
+        Sauce,
+        danbooru_id,
+        long_remaining,
+        short_remaining,
+        similarity
+    ),
+    SauceError (Decode),
+    SauceNaoHeader (long_remaining, short_remaining),
+    SauceNaoResponse (..),
+    SauceNaoResult (_data, _header),
+    SauceNaoResultData (danbooru_id),
+    SauceNaoResultHeader (similarity),
+    SauceResult,
+ )
 import qualified System.Directory as System
+import System.FilePath ((</>))
 import UnliftIO (MonadUnliftIO, mapConcurrently, mapConcurrently_, replicateConcurrently_)
 
 testFile :: FilePath
@@ -90,12 +98,33 @@ fakeQueryFile file = do
 mainSauce :: (MonadUnliftIO m, MonadLogger m, MonadReader Env m) => m [(FilePath, SauceResult)]
 mainSauce = do
     env <- ask
-    inputFiles <- liftIO $ System.listDirectory env.cli.inputFolder
+    let dir = env.cli.inputFolder
+    _inputFiles <- liftIO $ System.listDirectory env.cli.inputFolder
+    let inputFiles :: [FilePath] = _inputFiles <&> (dir </>)
     logInfo $ "reading input" :# ["inputFiles" .= inputFiles]
 
-    -- let x = files.inputFolder
+    zip inputFiles <$> queryFiles inputFiles
 
-    return $! todo "FIXME"
+queryFiles :: (MonadUnliftIO m, MonadLogger m, MonadReader Env m) => [FilePath] -> m [SauceResult]
+queryFiles files =
+    case splitAt 4 files of
+        ([], _) -> return []
+        (batch, []) -> do
+            batchResults <- mapConcurrently queryFile batch
+            mapM_ (\r -> logInfo $ "result" :# ["r" .= show r]) batchResults
+            return batchResults
+        (batch, rest) -> do
+            batchResults <- queryFiles batch
+            logWarn "waiting 31s for saucenao cooldown"
+
+            replicateM_ 3 $ do
+                liftIO $ threadDelay 10_000_000
+                logWarn "waiting..."
+            liftIO $ threadDelay 1_000_000
+
+            restResults <- queryFiles rest
+
+            return $ batchResults <> restResults
 
 -- stuff :: (MonadUnliftIO m, MonadLogger m, MonadReader Env m) => Int -> m [Bool]
 -- stuff n = do
