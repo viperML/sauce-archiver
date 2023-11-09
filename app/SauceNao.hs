@@ -1,109 +1,122 @@
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
-{-# HLINT ignore "Use newtype instead of data" #-}
+{-# LANGUAGE BangPatterns #-}
 
 module SauceNao where
 
 import Blammo.Logging.Simple
+import Cli
+import Control.Concurrent (threadDelay)
 import Control.Monad.IO.Class
 import Control.Monad.Reader
-import Data.Aeson (FromJSON (parseJSON), Object, Options (fieldLabelModifier), decodeStrict, genericParseJSON)
-import Data.Aeson.Types (defaultOptions)
-import Data.ByteString
-import Data.Text ( Text )
+import Data.Aeson.Decoding (decodeStrict)
+import Data.Functor (($>))
+import Data.Text (Text)
+import qualified Data.Text as T
 import Debug.Todo (todo)
-import Data.Text.Read
-import GHC.Generics (Generic)
-import Main (Env, sauceNaoApiKey)
-import Network.HTTP.Client.MultipartFormData (partBS, partFile)
+import Network.HTTP.Client.MultipartFormData (partFile)
 import Network.HTTP.Req
-
-data SauceNaoResponse = SauceNaoResponse
-  { header :: SauceNaoHeader
-  , results :: [SauceNaoResult]
-  }
-  deriving (Show, Generic)
-
-data SauceNaoHeader = SauceNaoHeader
-  { account_type :: Text
-  , long_remaining :: Integer
-  , short_remaining :: Integer
-  }
-  deriving (Show, Generic)
-
-data SauceNaoResult = SauceNaoResult
-  { _header :: SauceNaoResultHeader
-  , _data :: Object
-  }
-  deriving (Show, Generic)
-
-data SauceNaoResultHeader = SauceNaoResultHeader
-  { similarity :: Text
-  , thumbnail :: Text
-  }
-  deriving (Show, Generic)
-
-data SauceNaoResultData = SauceNaoResultData
-  { danbooru_id :: Integer
-  }
-  deriving (Show, Generic)
-
-instance FromJSON SauceNaoResponse
-
-instance FromJSON SauceNaoHeader
-
-instance FromJSON SauceNaoResult where
-  parseJSON = genericParseJSON defaultOptions{fieldLabelModifier = Prelude.drop 1}
-
-instance FromJSON SauceNaoResultHeader
+import SauceNaoTypes
+    ( SauceNaoResultData(danbooru_id),
+      SauceNaoResultHeader(similarity),
+      SauceNaoResult(_header, _data),
+      SauceNaoHeader(long_remaining, short_remaining),
+      SauceNaoResponse(..),
+      SauceResult,
+      Sauce(Sauce, danbooru_id, similarity, short_remaining,
+            long_remaining),
+      SauceError(Decode) )
+import qualified System.Directory as System
+import UnliftIO (MonadUnliftIO, mapConcurrently, mapConcurrently_, replicateConcurrently_)
 
 testFile :: FilePath
 testFile = "CAG_INPUT/test.jpg"
 
-data SauceError
-  = NoResults
-  | ShortTimeout
-  | LongTimeout
-  deriving (Show)
-
-data Sauce = Sauce
-  { similarity :: Float
-  , danbooru_id :: Integer
-  }
-  deriving (Show)
-
-type SauceResult = Either SauceError Sauce
-
 queryFile :: (MonadIO m, MonadLogger m, MonadReader Env m) => FilePath -> m SauceResult
 queryFile file = do
-  logInfo $ "Querying SauceNao" :# ["file" .= file]
-  env <- ask
-  let apikey :: Text = env.sauceNaoApiKey
+    let ctx = ["file" .= file]
+    logInfo $ "querying saucenao" :# ctx
 
-  body :: ReqBodyMultipart <- reqBodyMultipart [partFile "file" file]
+    env <- ask
+    let apikey = env.sauceNaoApiKey
 
-  let r :: Req BsResponse =
-        req
-          POST
-          (https "saucenao.com" /: "search.php")
-          body
-          bsResponse
-          $ ("output_type" =: ("2" :: Text))
-            <> ("numres" =: ("1" :: Text))
-            <> ("minsim" =: ("85" :: Text))
-            <> ("db" =: ("9" :: Text))
-            <> ("api_key" =: apikey)
+    body :: ReqBodyMultipart <- reqBodyMultipart [partFile "file" file]
 
-  resp <- runReq defaultHttpConfig r
-  logInfo $ "SauceNao response" :# ["response" .= show resp]
+    let r :: Req BsResponse =
+            req
+                POST
+                (https "saucenao.com" /: "search.php")
+                body
+                bsResponse
+                $ ("output_type" =: ("2" :: Text))
+                    <> ("numres" =: ("1" :: Text))
+                    <> ("minsim" =: ("85" :: Text))
+                    <> ("db" =: ("9" :: Text))
+                    <> ("api_key" =: apikey)
 
-  let decoded :: Maybe SauceNaoResponse = decodeStrict $ responseBody resp
-  logInfo $ "SauceNao decoded" :# ["decoded" .= show decoded]
+    resp <- runReq defaultHttpConfig r
+    logInfo $ "sauceNao response" :# ctx <> ["response" .= show resp]
 
-  return $ todo "FIXME"
+    let decoded :: Maybe SauceNaoResponse = decodeStrict $ responseBody resp
+    logInfo $ "sauceNao decoded" :# ctx <> ["decoded" .= decoded]
+
+    case decoded of
+        Just SauceNaoResponse{header = _header, results = [res]} ->
+            return $
+                Right $
+                    Sauce
+                        { danbooru_id = res._data.danbooru_id
+                        , similarity = read (T.unpack res._header.similarity)
+                        , short_remaining = _header.short_remaining
+                        , long_remaining = _header.long_remaining
+                        }
+        _ -> do
+            logError $ "saucenao fail to decode" :# ctx
+            return $ Left Decode
+
+fakeQueryFile :: (MonadUnliftIO m, MonadLogger m, MonadReader Env m) => FilePath -> m SauceResult
+fakeQueryFile file = do
+    logInfo "Querying SauceNao"
+
+    let newFileName = file <> ".test"
+
+    liftIO $ writeFile newFileName "fake query start"
+
+    return $ Right $ Sauce 0 0 0 0
+
+mainSauce :: (MonadUnliftIO m, MonadLogger m, MonadReader Env m) => m [(FilePath, SauceResult)]
+mainSauce = do
+    env <- ask
+    inputFiles <- liftIO $ System.listDirectory env.cli.inputFolder
+    logInfo $ "reading input" :# ["inputFiles" .= inputFiles]
+
+    -- let x = files.inputFolder
+
+    return $! todo "FIXME"
+
+-- stuff :: (MonadUnliftIO m, MonadLogger m, MonadReader Env m) => Int -> m [Bool]
+-- stuff n = do
+--     let files :: [FilePath] = Prelude.map (\i -> "test-" <> show i) [1 .. n]
+
+--     res <- fakeQueryConcurrent files
+--     logInfo $ "Result" :# ["res" .= show res]
+
+--     return []
+
+-- fakeQueryConcurrent :: (MonadUnliftIO m, MonadLogger m) => [FilePath] -> m [Bool]
+-- fakeQueryConcurrent files = do
+--     case files of
+--         (f1 : f2 : rest) -> do
+--             x <- mapConcurrently fakeQuery [f1, f2]
+--             let y = x $> True
+--             liftIO $ threadDelay 3_000_000
+--             restRes <- case rest of
+--                 [] -> return []
+--                 _ -> fakeQueryConcurrent rest
+--             return $ y <> restRes
+--         f -> do
+--             res <- mapConcurrently fakeQuery f
+--             return $ res $> True

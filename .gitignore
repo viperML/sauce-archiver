@@ -2,6 +2,7 @@
 *result*
 CAG_*
 .env
+test-*
 
 ### Created by https://www.gitignore.io
 ### Haskell ###
