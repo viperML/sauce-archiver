@@ -108,6 +108,7 @@ queryFiles files =
 
             return $ batchResults <> restResults
 
+
 mainSauce :: (MonadUnliftIO m, MonadLogger m, MonadReader Env m) => m [(FilePath, SauceResult)]
 mainSauce = do
     env <- ask
@@ -122,20 +123,21 @@ mainSauce = do
 fakeResult :: SauceResult
 fakeResult = Right $ Sauce 1 1 1 1
 
-fakeQuery :: (MonadUnliftIO m, MonadLogger m) => Producer SauceResult m ()
-fakeQuery = do
-    replicateM_ 10 $ do
-        yield fakeResult
-        lift $ logInfo "fake result"
+fakeQueryFiles :: (MonadUnliftIO m, MonadLogger m, MonadReader Env m) => Pipe FilePath SauceResult m ()
+fakeQueryFiles = do
+    n1 <- await
+    n2 <- await
 
-    lift $ logInfo "finish"
+    yield fakeResult
 
-mainFake :: (MonadUnliftIO m, MonadLogger m) => m ()
-mainFake = do
-    logInfo "Begin pipe"
 
-    runEffect $ fakeQuery >-> do
-            n <- await
-            lift $ logInfo $ "next" :# ["next" .= show n]
+fakeMain :: (MonadUnliftIO m, MonadLogger m, MonadReader Env m) => m ()
+fakeMain = do
+    let source = each ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]
 
-    logInfo "End pipe"
+    -- Print each elem
+    runEffect $ for (source >-> fakeQueryFiles) $ \x -> do
+        lift $ logInfo $ "result" :# ["x" .= show x]
+
+
+    undefined
