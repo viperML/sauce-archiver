@@ -145,6 +145,6 @@ fakeMain :: (MonadUnliftIO m, MonadLogger m, MonadReader Env m, Show s) => [s] -
 fakeMain s = do
     let source = each s
 
-    runEffect $ source >-> withTimeout 3 5_000_000 (\_ -> return ()) >-> P.drain
+    runEffect $ source >-> withTimeout 3 5_000_000 discard >-> P.drain
 
     undefined
