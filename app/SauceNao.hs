@@ -22,6 +22,7 @@ import Network.HTTP.Client.MultipartFormData (partFile)
 import Network.HTTP.Req
 import Pipes
 import Pipes (Producer)
+import qualified Pipes.Prelude as P
 import SauceNaoTypes (
     Sauce (
         Sauce,
@@ -116,17 +117,23 @@ mainSauce = do
     let inputFiles :: [FilePath] = _inputFiles <&> (dir </>)
     logInfo $ "reading input" :# ["inputFiles" .= inputFiles]
 
-    zip inputFiles <$> queryFiles inputFiles
+    -- zip inputFiles <$> queryFiles inputFiles
+    fakeMain inputFiles
+
+    todo "FIXME"
 
 fakeResult :: SauceResult
 fakeResult = Right $ Sauce 1 1 1 1
 
 withTimeout :: (MonadUnliftIO m, MonadLogger m, Show a, Show b) => Int -> Int -> (a -> m b) -> Pipe a b m ()
 withTimeout size delay f = do
+    lift $! logInfo $! "pipe started" :# ["size" .= show size, "delay" .= show delay]
+
     replicateM_ size $ do
         x <- await
+        lift $! logInfo $! "input" :# ["x" .= show x]
         res <- lift $ f x
-        lift $ logInfo $ "pipe processed" :# ["input" .= show x, "output" .= show res]
+        lift $! logInfo $! "output" :# ["o" .= show res]
         yield res
 
     lift $ logInfo $ "sleeping" :# []
@@ -138,7 +145,6 @@ fakeMain :: (MonadUnliftIO m, MonadLogger m, MonadReader Env m, Show s) => [s] -
 fakeMain s = do
     let source = each s
 
-    runEffect $ for (source >-> withTimeout 4 2_000_000 (liftIO . print)) $ \x -> do
-        liftIO $ threadDelay 1
+    runEffect $ (source >-> withTimeout 3 5_000_000 (\_ -> return ())) >-> P.print
 
     undefined
