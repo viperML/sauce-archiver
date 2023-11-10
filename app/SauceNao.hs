@@ -20,6 +20,8 @@ import qualified Data.Text as T
 import Debug.Todo (todo)
 import Network.HTTP.Client.MultipartFormData (partFile)
 import Network.HTTP.Req
+import Pipes
+import Pipes (Producer)
 import SauceNaoTypes (
     Sauce (
         Sauce,
@@ -39,8 +41,6 @@ import SauceNaoTypes (
 import qualified System.Directory as System
 import System.FilePath ((</>))
 import UnliftIO (MonadUnliftIO, mapConcurrently, mapConcurrently_, replicateConcurrently_)
-import Pipes (Producer)
-import Pipes
 
 testFile :: FilePath
 testFile = "CAG_INPUT/test.jpg"
@@ -108,7 +108,6 @@ queryFiles files =
 
             return $ batchResults <> restResults
 
-
 mainSauce :: (MonadUnliftIO m, MonadLogger m, MonadReader Env m) => m [(FilePath, SauceResult)]
 mainSauce = do
     env <- ask
@@ -119,25 +118,27 @@ mainSauce = do
 
     zip inputFiles <$> queryFiles inputFiles
 
-
 fakeResult :: SauceResult
 fakeResult = Right $ Sauce 1 1 1 1
 
-fakeQueryFiles :: (MonadUnliftIO m, MonadLogger m, MonadReader Env m) => Pipe FilePath SauceResult m ()
-fakeQueryFiles = do
-    n1 <- await
-    n2 <- await
+withTimeout :: (MonadUnliftIO m, MonadLogger m, Show a, Show b) => Int -> Int -> (a -> m b) -> Pipe a b m ()
+withTimeout size delay f = do
+    replicateM_ size $ do
+        x <- await
+        res <- lift $ f x
+        lift $ logInfo $ "pipe processed" :# ["input" .= show x, "output" .= show res]
+        yield res
 
-    yield fakeResult
+    lift $ logInfo $ "sleeping" :# []
+    liftIO $ threadDelay delay
 
+    withTimeout size delay f
 
-fakeMain :: (MonadUnliftIO m, MonadLogger m, MonadReader Env m) => m ()
-fakeMain = do
-    let source = each ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]
+fakeMain :: (MonadUnliftIO m, MonadLogger m, MonadReader Env m, Show s) => [s] -> m ()
+fakeMain s = do
+    let source = each s
 
-    -- Print each elem
-    runEffect $ for (source >-> fakeQueryFiles) $ \x -> do
-        lift $ logInfo $ "result" :# ["x" .= show x]
-
+    runEffect $ for (source >-> withTimeout 4 2_000_000 (liftIO . print)) $ \x -> do
+        liftIO $ threadDelay 1
 
     undefined
