@@ -39,6 +39,8 @@ import SauceNaoTypes (
 import qualified System.Directory as System
 import System.FilePath ((</>))
 import UnliftIO (MonadUnliftIO, mapConcurrently, mapConcurrently_, replicateConcurrently_)
+import Pipes (Producer)
+import Pipes
 
 testFile :: FilePath
 testFile = "CAG_INPUT/test.jpg"
@@ -85,26 +87,6 @@ queryFile file = do
             logError $ "saucenao fail to decode" :# ctx
             return $ Left Decode
 
-fakeQueryFile :: (MonadUnliftIO m, MonadLogger m, MonadReader Env m) => FilePath -> m SauceResult
-fakeQueryFile file = do
-    logInfo "Querying SauceNao"
-
-    let newFileName = file <> ".test"
-
-    liftIO $ writeFile newFileName "fake query start"
-
-    return $ Right $ Sauce 0 0 0 0
-
-mainSauce :: (MonadUnliftIO m, MonadLogger m, MonadReader Env m) => m [(FilePath, SauceResult)]
-mainSauce = do
-    env <- ask
-    let dir = env.cli.inputFolder
-    _inputFiles <- liftIO $ System.listDirectory env.cli.inputFolder
-    let inputFiles :: [FilePath] = _inputFiles <&> (dir </>)
-    logInfo $ "reading input" :# ["inputFiles" .= inputFiles]
-
-    zip inputFiles <$> queryFiles inputFiles
-
 queryFiles :: (MonadUnliftIO m, MonadLogger m, MonadReader Env m) => [FilePath] -> m [SauceResult]
 queryFiles files =
     case splitAt 4 files of
@@ -126,26 +108,34 @@ queryFiles files =
 
             return $ batchResults <> restResults
 
--- stuff :: (MonadUnliftIO m, MonadLogger m, MonadReader Env m) => Int -> m [Bool]
--- stuff n = do
---     let files :: [FilePath] = Prelude.map (\i -> "test-" <> show i) [1 .. n]
+mainSauce :: (MonadUnliftIO m, MonadLogger m, MonadReader Env m) => m [(FilePath, SauceResult)]
+mainSauce = do
+    env <- ask
+    let dir = env.cli.inputFolder
+    _inputFiles <- liftIO $ System.listDirectory env.cli.inputFolder
+    let inputFiles :: [FilePath] = _inputFiles <&> (dir </>)
+    logInfo $ "reading input" :# ["inputFiles" .= inputFiles]
 
---     res <- fakeQueryConcurrent files
---     logInfo $ "Result" :# ["res" .= show res]
+    zip inputFiles <$> queryFiles inputFiles
 
---     return []
 
--- fakeQueryConcurrent :: (MonadUnliftIO m, MonadLogger m) => [FilePath] -> m [Bool]
--- fakeQueryConcurrent files = do
---     case files of
---         (f1 : f2 : rest) -> do
---             x <- mapConcurrently fakeQuery [f1, f2]
---             let y = x $> True
---             liftIO $ threadDelay 3_000_000
---             restRes <- case rest of
---                 [] -> return []
---                 _ -> fakeQueryConcurrent rest
---             return $ y <> restRes
---         f -> do
---             res <- mapConcurrently fakeQuery f
---             return $ res $> True
+fakeResult :: SauceResult
+fakeResult = Right $ Sauce 1 1 1 1
+
+fakeQuery :: (MonadUnliftIO m, MonadLogger m) => Producer SauceResult m ()
+fakeQuery = do
+    replicateM_ 10 $ do
+        yield fakeResult
+        lift $ logInfo "fake result"
+
+    lift $ logInfo "finish"
+
+mainFake :: (MonadUnliftIO m, MonadLogger m) => m ()
+mainFake = do
+    logInfo "Begin pipe"
+
+    runEffect $ fakeQuery >-> do
+            n <- await
+            lift $ logInfo $ "next" :# ["next" .= show n]
+
+    logInfo "End pipe"

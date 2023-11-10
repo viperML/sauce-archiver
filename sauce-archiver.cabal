@@ -39,3 +39,4 @@ executable sauce-archiver
     , transformers
     , unliftio
     , filepath
+    , pipes

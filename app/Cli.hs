@@ -1,20 +1,20 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-cse #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE DeriveGeneric #-}
 
 module Cli where
 
-import System.Console.CmdArgs
-import GHC.Generics
-import Data.Text (Text)
-import Control.Monad.Reader (ReaderT)
 import Blammo.Logging.Simple
-import System.Environment (getEnv)
-import qualified Data.Text as T
+import Control.Monad.Reader (ReaderT)
 import Control.Monad.Trans.Reader (runReaderT)
+import Data.Text (Text)
+import qualified Data.Text as T
+import GHC.Generics
+import System.Console.CmdArgs
+import System.Environment (getEnv)
 
 data CliArgs = CliArgs
     { inputFolder :: FilePath
@@ -38,20 +38,17 @@ logRunner :: LoggingT IO a -> IO a
 logRunner = runSimpleLoggingT
 
 data Env = Env
-  { cli :: CliArgs
-  , sauceNaoApiKey :: Text
-  }
-  deriving (Show, Generic)
+    { cli :: CliArgs
+    , sauceNaoApiKey :: Text
+    }
+    deriving (Show, Generic)
 
-type App = LoggingT (ReaderT Env IO)
-
-runApp :: App a -> IO a
+runApp :: LoggingT (ReaderT Env IO) a -> IO a
 runApp app = do
-  cli <- readCli
-  sauceNaoApiKey <- T.pack <$> getEnv "SAUCENAO_APIKEY"
-  let env = Env{cli, sauceNaoApiKey}
+    cli <- readCli
+    sauceNaoApiKey <- T.pack <$> getEnv "SAUCENAO_APIKEY"
+    let env = Env{cli, sauceNaoApiKey}
 
-  runReaderT
-    (runSimpleLoggingT app)
-    env
-
+    runReaderT
+        (runSimpleLoggingT app)
+        env
