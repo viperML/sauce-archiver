@@ -7,7 +7,6 @@
 
 module SauceNaoTypes where
 
-import Data.Aeson (Object)
 import Data.Aeson.TH
 import Data.Text (Text)
 

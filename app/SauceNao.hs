@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NumericUnderscores #-}
@@ -14,14 +13,13 @@ import Control.Concurrent (threadDelay)
 import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Data.Aeson.Decoding (decodeStrict)
-import Data.Functor (($>), (<&>))
+import Data.Functor ((<&>))
 import Data.Text (Text)
 import qualified Data.Text as T
 import Debug.Todo (todo)
 import Network.HTTP.Client.MultipartFormData (partFile)
 import Network.HTTP.Req
 import Pipes
-import Pipes (Producer)
 import qualified Pipes.Prelude as P
 import SauceNaoTypes (
     Sauce (
@@ -41,7 +39,7 @@ import SauceNaoTypes (
  )
 import qualified System.Directory as System
 import System.FilePath ((</>))
-import UnliftIO (MonadUnliftIO, mapConcurrently, mapConcurrently_, replicateConcurrently_)
+import UnliftIO (MonadUnliftIO, mapConcurrently)
 
 testFile :: FilePath
 testFile = "CAG_INPUT/test.jpg"
