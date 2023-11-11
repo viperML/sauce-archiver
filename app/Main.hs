@@ -13,6 +13,7 @@ import Blammo.Logging.Simple
 import Cli
 
 import Control.Monad.Reader
+import Danbooru (favPost, sauceNaoAdapter)
 import Files (inputFiles)
 import Pipes
 import qualified Pipes.Prelude as P
@@ -29,8 +30,17 @@ main' = do
     logInfo $ "reading env" :# ["env" .= show env]
 
     runEffect $
-        P.zip inputFiles (inputFiles >-> mainSauce)
-            >-> P.mapM_ (\x -> logInfo $ "main: " :# ["x" .= show x])
+        inputFiles
+            >-> mainSauce
+            >-> pipeLog
+            >-> P.map sauceNaoAdapter
+            >-> P.mapM_ favPost
             >-> P.drain
 
     return ()
+
+pipeLog :: (MonadLogger m, Show a) => Pipe a a m ()
+pipeLog = forever $ do
+    x <- await
+    lift $ logInfo $ "pipeLog: " :# ["x" .= show x]
+    yield x

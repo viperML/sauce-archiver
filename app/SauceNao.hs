@@ -13,6 +13,7 @@ import Control.Concurrent (threadDelay)
 import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Data.Aeson.Decoding (decodeStrict)
+import Data.Either.Extra (eitherToMaybe)
 import Data.Functor ((<&>))
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -39,7 +40,7 @@ import SauceNaoTypes (
  )
 import qualified System.Directory as System
 import System.FilePath ((</>))
-import UnliftIO (MonadUnliftIO, mapConcurrently)
+import UnliftIO (MonadUnliftIO, mapConcurrently, mapConcurrently_, replicateConcurrently_)
 
 testFile :: FilePath
 testFile = "CAG_INPUT/test.jpg"
@@ -101,5 +102,11 @@ batched batchSize delay = do
         liftIO $ threadDelay delay
         yield n
 
-mainSauce :: (MonadUnliftIO m, MonadLogger m, MonadReader Env m) => Pipe FilePath SauceResult m ()
-mainSauce = do P.mapM queryFile >-> batched 3 30_500_000
+mainSauce :: (MonadUnliftIO m, MonadLogger m, MonadReader Env m) => Pipe FilePath Sauce m ()
+mainSauce =
+    do
+        cat
+        >-> batched 3 30_500_000
+        >-> P.mapM queryFile
+        >-> P.mapMaybe eitherToMaybe
+

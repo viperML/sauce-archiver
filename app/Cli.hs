@@ -40,6 +40,8 @@ logRunner = runSimpleLoggingT
 data Env = Env
     { cli :: CliArgs
     , sauceNaoApiKey :: Text
+    , danbooruUsername :: Text
+    , danbooruApiKey :: Text
     }
     deriving (Show, Generic)
 
@@ -47,7 +49,10 @@ runApp :: LoggingT (ReaderT Env IO) a -> IO a
 runApp app = do
     cli <- readCli
     sauceNaoApiKey <- T.pack <$> getEnv "SAUCENAO_APIKEY"
-    let env = Env{cli, sauceNaoApiKey}
+    danbooruUsername <- T.pack <$> getEnv "DANBOORU_USERNAME"
+    danbooruApiKey <- T.pack <$> getEnv "DANBOORU_APIKEY"
+
+    let env = Env{cli, sauceNaoApiKey, danbooruUsername, danbooruApiKey}
 
     runReaderT
         (runSimpleLoggingT app)
