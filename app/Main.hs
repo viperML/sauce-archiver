@@ -13,6 +13,9 @@ import Blammo.Logging.Simple
 import Cli
 
 import Control.Monad.Reader
+import Files (inputFiles)
+import Pipes
+import qualified Pipes.Prelude as P
 import SauceNao (mainSauce)
 import UnliftIO (MonadUnliftIO)
 import Prelude hiding (id)
@@ -25,12 +28,9 @@ main' = do
     env <- ask
     logInfo $ "reading env" :# ["env" .= show env]
 
-    res <- mainSauce
-    mapM_
-        ( \e -> do
-            liftIO $ print e
-            liftIO $ writeFile (fst e <> "-result") (show $ snd e)
-        )
-        res
+    runEffect $
+        P.zip inputFiles (inputFiles >-> mainSauce)
+            >-> P.mapM_ (\x -> logInfo $ "main: " :# ["x" .= show x])
+            >-> P.drain
 
     return ()

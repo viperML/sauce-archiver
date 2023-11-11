@@ -86,40 +86,6 @@ queryFile file = do
             logError $ "saucenao fail to decode" :# ctx
             return $ Left Decode
 
-queryFiles :: (MonadUnliftIO m, MonadLogger m, MonadReader Env m) => [FilePath] -> m [SauceResult]
-queryFiles files =
-    case splitAt 4 files of
-        ([], _) -> return []
-        (batch, []) -> do
-            batchResults <- mapConcurrently queryFile batch
-            mapM_ (\r -> logInfo $ "result" :# ["r" .= show r]) batchResults
-            return batchResults
-        (batch, rest) -> do
-            batchResults <- queryFiles batch
-            logWarn "waiting 31s for saucenao cooldown"
-
-            replicateM_ 3 $ do
-                liftIO $ threadDelay 10_000_000
-                logWarn "waiting..."
-            liftIO $ threadDelay 1_000_000
-
-            restResults <- queryFiles rest
-
-            return $ batchResults <> restResults
-
-mainSauce :: (MonadUnliftIO m, MonadLogger m, MonadReader Env m) => m [(FilePath, SauceResult)]
-mainSauce = do
-    env <- ask
-    let dir = env.cli.inputFolder
-    _inputFiles <- liftIO $ System.listDirectory env.cli.inputFolder
-    let inputFiles :: [FilePath] = _inputFiles <&> (dir </>)
-    logInfo $ "reading input" :# ["inputFiles" .= inputFiles]
-
-    -- zip inputFiles <$> queryFiles inputFiles
-    fakeMain inputFiles
-
-    todo "FIXME"
-
 fakeResult :: SauceResult
 fakeResult = Right $ Sauce 1 1 1 1
 
@@ -131,14 +97,9 @@ batched batchSize delay = do
         mapM_ yield =<< replicateM (batchSize - 1) await
 
         n <- await
-        lift $ logInfo $ "sleeping" :# []
+        lift $ logInfo $ "sleeping" :# ["ms" .= show delay]
         liftIO $ threadDelay delay
         yield n
 
-fakeMain :: (MonadUnliftIO m, MonadLogger m, MonadReader Env m, Show s) => [s] -> m ()
-fakeMain s = do
-    let source = each s
-
-    runEffect $ source >-> batched 3 5_000_000 >-> P.mapM_ (\x -> logInfo $ "x" :# ["x" .= show x]) >-> P.drain
-
-    undefined
+mainSauce :: (MonadUnliftIO m, MonadLogger m, MonadReader Env m) => Pipe FilePath SauceResult m ()
+mainSauce = do P.mapM queryFile >-> batched 3 30_500_000

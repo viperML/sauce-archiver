@@ -8,12 +8,17 @@ module Files where
 import Blammo.Logging.Simple
 import Cli
 import Control.Monad.Reader
+import Pipes
+import qualified Pipes.Prelude as P
 import System.Directory (listDirectory)
+import System.FilePath
+import UnliftIO (MonadUnliftIO)
 
-inputFiles :: (MonadReader Env m, MonadIO m, MonadLogger m) => m [FilePath]
+inputFiles :: (MonadUnliftIO m, MonadReader Env m) => Producer FilePath m ()
 inputFiles = do
-  env :: Env <- ask
-  let inputFolder = env.cli.inputFolder
-  res <- liftIO $ listDirectory inputFolder
-  logInfo $ "inputFiles: " :# ["msg" .= res, "folder" .= inputFolder]
-  return res
+    env <- ask
+
+    files <- liftIO $ listDirectory env.cli.inputFolder
+    let filesFixed = (env.cli.inputFolder </>) <$> files
+
+    each filesFixed
