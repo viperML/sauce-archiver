@@ -125,26 +125,22 @@ mainSauce = do
 fakeResult :: SauceResult
 fakeResult = Right $ Sauce 1 1 1 1
 
-withTimeout :: (MonadUnliftIO m, MonadLogger m, Show a, Show b) => Int -> Int -> (a -> m b) -> Pipe a b m ()
-withTimeout size delay f = do
-    lift $! logInfo $! "pipe started" :# ["size" .= show size, "delay" .= show delay]
+batched :: (MonadUnliftIO m, MonadLogger m) => Int -> Int -> Pipe a a m ()
+batched batchSize delay = do
+    yield =<< await
 
-    replicateM_ size $ do
-        x <- await
-        lift $! logInfo $! "input" :# ["x" .= show x]
-        res <- lift $ f x
-        lift $! logInfo $! "output" :# ["o" .= show res]
-        yield res
+    forever $ do
+        mapM_ yield =<< replicateM (batchSize - 1) await
 
-    lift $ logInfo $ "sleeping" :# []
-    liftIO $ threadDelay delay
-
-    withTimeout size delay f
+        n <- await
+        lift $ logInfo $ "sleeping" :# []
+        liftIO $ threadDelay delay
+        yield n
 
 fakeMain :: (MonadUnliftIO m, MonadLogger m, MonadReader Env m, Show s) => [s] -> m ()
 fakeMain s = do
     let source = each s
 
-    runEffect $ source >-> withTimeout 3 5_000_000 discard >-> P.drain
+    runEffect $ source >-> batched 3 5_000_000 >-> P.mapM_ (\x -> logInfo $ "x" :# ["x" .= show x]) >-> P.drain
 
     undefined
