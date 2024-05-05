@@ -48,5 +48,20 @@
       default = pkgs.haskellPackages.sauce-archiver;
       static = pkgs.pkgsMusl.haskellPackages.sauce-archiver;
     });
+
+    devShells = forAllSystems (pkgs: {
+      pkgShell = pkgs.haskellPackages.developPackage {
+        root = src;
+        returnShellEnv = true;
+      };
+
+      shell = with pkgs;
+        mkShellNoCC {
+          packages = [
+            haskellPackages.cabal-install
+            haskellPackages.haskell-language-server
+          ];
+        };
+    });
   };
 }
