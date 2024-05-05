@@ -1,46 +1,64 @@
-{-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
+{-# LANGUAGE RecordWildCards #-}
 
-{-# HLINT ignore "Redundant return" #-}
+module Main (main) where
 
-module Main where
+import Colog (
+    LogAction,
+    Message,
+    Msg (..),
+    WithLog,
+    cmap,
+    fmtMessage,
+    formatWith,
+    logError,
+    logInfo,
+    logTextStderr,
+    logTextStdout,
+    msgSeverity,
+    msgText,
+    richMessageAction,
+    showSeverity,
+    usingLoggerT, logWarning, logDebug, cfilter, Severity (Debug),
+ )
 
-import Blammo.Logging.Simple
-import Cli
+import Data.Text (Text, pack)
+import Prelude hiding (log)
+import System.Environment (getEnvironment, getEnv)
+import UnliftIO
 
-import Control.Monad.Reader
-import Danbooru (favPost, sauceNaoAdapter)
-import Files (inputFiles)
-import Pipes
-import qualified Pipes.Prelude as P
-import SauceNao (mainSauce)
-import UnliftIO (MonadUnliftIO)
-import Prelude hiding (id)
+example1 :: WithLog env Message m => m ()
+example1 = do
+    logInfo "this is a demo log for message!"
+    logWarning "xd"
+    logDebug "xd"
 
-main :: IO ()
-main = runApp main'
+logStdoutAction :: LogAction IO Message
+logStdoutAction = cmap fmtMessage logTextStdout
 
-main' :: (MonadUnliftIO m, MonadLogger m, MonadReader Env m) => m ()
-main' = do
-    env <- ask
-    logInfo $ "reading env" :# ["env" .= show env]
+fmtMessageWithoutSourceLoc :: Message -> Text
+fmtMessageWithoutSourceLoc Msg{..} =
+    showSeverity msgSeverity
+        <> msgText
 
-    runEffect $
-        inputFiles
-            >-> mainSauce
-            >-> pipeLog
-            >-> P.map sauceNaoAdapter
-            >-> P.mapM_ favPost
-            >-> P.drain
 
+example2 :: (WithLog env Message m, MonadUnliftIO m) => m ()
+example2 = do
+    logInfo "xd"
+    logDebug "goodbye"
     return ()
 
-pipeLog :: (MonadLogger m, Show a) => Pipe a a m ()
-pipeLog = forever $ do
-    x <- await
-    lift $ logInfo $ "pipeLog: " :# ["x" .= show x]
-    yield x
+
+
+
+main :: IO ()
+main = do
+    let myFilter = cfilter (\Msg{..} -> msgSeverity > Debug)
+    usingLoggerT (myFilter logStdoutAction) $ do
+        concurrently_ example2 example2
+    return ()

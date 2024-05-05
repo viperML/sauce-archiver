@@ -1,0 +1,26 @@
+name: Build
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+jobs:
+  main:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          extra-conf: |
+            allow-import-from-derivation = true
+
+      - name: Install Magic Nix Cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - run: nix build github:$GITHUB_REPOSITORY/$GITHUB_SHA -L
+        name: Regular build
+
+      - run: nix build github:$GITHUB_REPOSITORY/$GITHUB_SHA#static -L
+        name: Static build
