@@ -32,6 +32,8 @@ import Prelude hiding (log)
 import System.Environment (getEnvironment, getEnv)
 import UnliftIO
 
+import Cli
+
 example1 :: WithLog env Message m => m ()
 example1 = do
     logInfo "this is a demo log for message!"
@@ -61,4 +63,5 @@ main = do
     let myFilter = cfilter (\Msg{..} -> msgSeverity > Debug)
     usingLoggerT (myFilter logStdoutAction) $ do
         concurrently_ example2 example2
+    opts <- parsed
     return ()
