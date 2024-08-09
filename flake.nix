@@ -42,7 +42,7 @@
       };
     };
 
-    legacyPackages = forAllSystems (pkgs: pkgs);
+    legacyPackages = forAllSystems lib.id;
 
     packages = forAllSystems (pkgs: {
       default = pkgs.haskellPackages.sauce-archiver;
