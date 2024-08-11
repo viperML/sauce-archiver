@@ -23,3 +23,4 @@ executable sauce-archiver
     , fast-logger
     , bytestring
     , monad-logger
+    , text
