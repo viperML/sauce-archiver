@@ -24,3 +24,5 @@ executable sauce-archiver
     , bytestring
     , monad-logger
     , text
+    , transformers
+    , mtl
