@@ -9,6 +9,7 @@ import Control.Monad.Reader (MonadReader)
 import Control.Monad.Trans.Reader
 import Log (runLog)
 import Control.Monad.Logger (LoggingT, MonadLogger, logDebugN, logInfoN)
+import Cli
 
 data Config = Config
     {
@@ -32,6 +33,8 @@ main = do
     let config = Config{}
 
     -- runReaderT (unApp main') config
-    runLog $ runReaderT (unApp main') config
+    -- runLog $ runReaderT (unApp main') config
+    o <- options
+    print o
 
     return ()

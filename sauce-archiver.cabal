@@ -15,8 +15,9 @@ executable sauce-archiver
   main-is:          Main.hs
   other-modules:
     Log
+    Cli
 
-  default-extensions: OverloadedStrings
+  default-extensions: OverloadedStrings, OverloadedRecordDot, DuplicateRecordFields
 
   ghc-options: -Werror=incomplete-patterns
 
@@ -29,3 +30,4 @@ executable sauce-archiver
     , text
     , transformers
     , mtl
+    , optparse-applicative
