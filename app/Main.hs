@@ -2,6 +2,7 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -13,6 +14,8 @@ import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (Concurrently (Concurrently, runConcurrently))
 import Control.Exception (throwIO)
 import Control.Monad (forever)
+import Control.Monad.Catch (MonadCatch, MonadThrow (throwM), catch)
+import Control.Monad.Error.Class (MonadError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Logger (LoggingT, MonadLogger, logDebugN, logInfoN)
 import Control.Monad.Reader (MonadReader, ReaderT (runReaderT))
@@ -21,8 +24,10 @@ import Data.Aeson (FromJSON)
 import Data.Aeson.Types (Value)
 import qualified Data.Text as T
 import Log (runLog)
+import Network.HTTP.Client
 import Network.HTTP.Req
 import System.Environment (getEnv)
+import GHC.Stack (HasCallStack)
 
 data Config = Config
     { username :: String
@@ -33,7 +38,8 @@ data Config = Config
 newtype App a = App
     { unApp :: ReaderT Config (LoggingT IO) a
     }
-    deriving newtype (Functor, Applicative, Monad, MonadIO, MonadLogger, MonadReader Config)
+    deriving newtype (Functor, Applicative, Monad, MonadIO, MonadLogger, MonadReader Config, MonadThrow, MonadCatch)
+
 instance MonadHttp App where
     handleHttpException = liftIO . throwIO
 
@@ -56,9 +62,7 @@ myUrl = do
     username <- getEnv "DANBOORU_USERNAME"
     apikey <- getEnv "DANBOORU_APIKEY"
 
-    let x = https "testbooru.donmai.us" /: "posts" /: "6.json"
-
-    return x
+    return $ https "testbooru.donmai.us" /: "posts" /: "6.json"
 
 doReq :: (MonadHttp m, FromJSON a) => Url 'Https -> m (JsonResponse a)
 doReq url =
@@ -69,19 +73,22 @@ doReq url =
         jsonResponse
         $ header "User-Agent" "viperML"
 
-doReq2 :: App ()
+doReq2 :: HasCallStack => App ()
 doReq2 = do
     logInfoN "Hello"
 
-    x :: JsonResponse Value <-
-        req
-            GET
-            (https "testbooru.donmai.us" /: "posts" /: "6.json")
-            NoReqBody
-            jsonResponse
-            $ header "User-Agent" "viperML"
-
-    logInfoN $ T.pack $ show x
+    x <-
+        ( req
+                GET
+                (https "testbooru.donmai.us" /: "wtf")
+                NoReqBody
+                ignoreResponse
+                $ header "User-Agent" "viperML"
+            )
+            `catch` ( \case
+                        VanillaHttpException (HttpExceptionRequest r (StatusCodeException a b)) -> undefined
+                        other -> throwM other
+                    )
 
     return ()
 

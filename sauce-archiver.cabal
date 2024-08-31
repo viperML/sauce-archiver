@@ -35,3 +35,4 @@ executable sauce-archiver
     , req
     , http-client
     , aeson
+    , exceptions
