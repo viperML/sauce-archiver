@@ -3,6 +3,7 @@
 CAG_*
 .env
 test-*
+/tags
 
 ### Created by https://www.gitignore.io
 ### Haskell ###

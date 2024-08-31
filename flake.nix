@@ -60,6 +60,7 @@
           packages = [
             haskellPackages.cabal-install
             haskellPackages.haskell-language-server
+            haskellPackages.fast-tags
           ];
         };
     });

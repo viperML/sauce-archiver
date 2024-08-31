@@ -31,3 +31,7 @@ executable sauce-archiver
     , transformers
     , mtl
     , optparse-applicative
+    , async
+    , req
+    , http-client
+    , aeson
