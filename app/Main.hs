@@ -20,14 +20,16 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Logger (LoggingT, MonadLogger, logDebugN, logInfoN)
 import Control.Monad.Reader (MonadReader, ReaderT (runReaderT))
 import Control.Monad.Trans.Reader (ReaderT)
-import Data.Aeson (FromJSON)
+import Data.Aeson (FromJSON, Value (String))
 import Data.Aeson.Types (Value)
 import qualified Data.Text as T
+import GHC.IO.Exception (IOException (IOError))
+import GHC.Stack (HasCallStack)
 import Log (runLog)
 import Network.HTTP.Client
 import Network.HTTP.Req
 import System.Environment (getEnv)
-import GHC.Stack (HasCallStack)
+import System.IO.Error (isDoesNotExistError)
 
 data Config = Config
     { username :: String
@@ -73,7 +75,7 @@ doReq url =
         jsonResponse
         $ header "User-Agent" "viperML"
 
-doReq2 :: HasCallStack => App ()
+doReq2 :: (HasCallStack) => App ()
 doReq2 = do
     logInfoN "Hello"
 
@@ -94,9 +96,17 @@ doReq2 = do
 
 main :: IO ()
 main = do
-    config <- Config <$> getEnv "DANBOORU_USERNAME" <*> getEnv "DANBOORU_APIKEY"
-    print config
+    -- config <- Config <$> getEnv "DANBOORU_USERNAME" <*> getEnv "DANBOORU_APIKEY"
+    -- print config
+    --
+    res <-
+        (Right <$> getEnv "never")
+            `catch` ( \(e :: IOError) ->
+                        if isDoesNotExistError e
+                            then return $ Left ""
+                            else throwM e
+                    )
 
-    runApp config doReq2
+    print res
 
     return ()
