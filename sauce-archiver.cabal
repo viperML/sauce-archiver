@@ -17,7 +17,12 @@ executable sauce-archiver
     Log
     Cli
 
-  default-extensions: OverloadedStrings, OverloadedRecordDot, DuplicateRecordFields
+  default-extensions:
+    , OverloadedStrings
+    , OverloadedRecordDot
+    , DuplicateRecordFields
+    , ScopedTypeVariables
+    , LambdaCase
 
   ghc-options: -Werror=incomplete-patterns
 
@@ -31,8 +36,7 @@ executable sauce-archiver
     , transformers
     , mtl
     , optparse-applicative
-    , async
     , req
     , http-client
     , aeson
-    , exceptions
+    , unliftio

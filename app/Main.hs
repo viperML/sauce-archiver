@@ -2,19 +2,14 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 module Main (main) where
 
 import Cli
 import Control.Concurrent (threadDelay)
-import Control.Concurrent.Async (Concurrently (Concurrently, runConcurrently))
 import Control.Exception (throwIO)
 import Control.Monad (forever)
-import Control.Monad.Catch (MonadCatch, MonadThrow (throwM), catch)
 import Control.Monad.Error.Class (MonadError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Logger (LoggingT, MonadLogger, logDebugN, logInfoN)
@@ -22,14 +17,18 @@ import Control.Monad.Reader (MonadReader, ReaderT (runReaderT))
 import Control.Monad.Trans.Reader (ReaderT)
 import Data.Aeson (FromJSON, Value (String))
 import Data.Aeson.Types (Value)
+import Data.Functor
 import qualified Data.Text as T
 import GHC.IO.Exception (IOException (IOError))
 import GHC.Stack (HasCallStack)
 import Log (runLog)
 import Network.HTTP.Client
 import Network.HTTP.Req
+import Options.Applicative (helpLongEquals)
 import System.Environment (getEnv)
 import System.IO.Error (isDoesNotExistError)
+import UnliftIO (MonadUnliftIO)
+import UnliftIO.Async
 
 data Config = Config
     { username :: String
@@ -40,10 +39,11 @@ data Config = Config
 newtype App a = App
     { unApp :: ReaderT Config (LoggingT IO) a
     }
-    deriving newtype (Functor, Applicative, Monad, MonadIO, MonadLogger, MonadReader Config, MonadThrow, MonadCatch)
+    deriving newtype
+        (Functor, Applicative, Monad, MonadLogger, MonadReader Config, MonadIO, MonadUnliftIO)
 
-instance MonadHttp App where
-    handleHttpException = liftIO . throwIO
+-- instance MonadHttp App where
+--     handleHttpException = liftIO . throwIO
 
 runApp :: Config -> App a -> IO a
 runApp config x = runLog $ runReaderT (unApp x) config
@@ -75,38 +75,19 @@ doReq url =
         jsonResponse
         $ header "User-Agent" "viperML"
 
-doReq2 :: (HasCallStack) => App ()
-doReq2 = do
-    logInfoN "Hello"
+doReq3 :: App ()
+doReq3 = do
+    liftIO $ print "start"
+    liftIO $ threadDelay (1500 * 1000)
+    liftIO $ print "finish"
 
-    x <-
-        ( req
-                GET
-                (https "testbooru.donmai.us" /: "wtf")
-                NoReqBody
-                ignoreResponse
-                $ header "User-Agent" "viperML"
-            )
-            `catch` ( \case
-                        VanillaHttpException (HttpExceptionRequest r (StatusCodeException a b)) -> undefined
-                        other -> throwM other
-                    )
-
-    return ()
+x :: App ()
+x = void (runConcurrently ((,) <$> Concurrently doReq3 <*> Concurrently doReq3))
 
 main :: IO ()
 main = do
-    -- config <- Config <$> getEnv "DANBOORU_USERNAME" <*> getEnv "DANBOORU_APIKEY"
-    -- print config
-    --
-    res <-
-        (Right <$> getEnv "never")
-            `catch` ( \(e :: IOError) ->
-                        if isDoesNotExistError e
-                            then return $ Left ""
-                            else throwM e
-                    )
+    config <- Config <$> getEnv "DANBOORU_USERNAME" <*> getEnv "DANBOORU_APIKEY"
 
-    print res
+    runApp config x
 
     return ()
