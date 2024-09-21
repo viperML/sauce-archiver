@@ -16,6 +16,7 @@ executable sauce-archiver
   other-modules:
     Log
     Cli
+    SauceNao
 
   default-extensions:
     , OverloadedStrings
