@@ -17,6 +17,7 @@ executable sauce-archiver
     Log
     Cli
     SauceNao
+    SauceNaoTypes
 
   default-extensions:
     , OverloadedStrings

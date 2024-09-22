@@ -15,7 +15,7 @@ import Network.HTTP.Req (
     https,
     req,
     (/:),
-    (=:), reqBodyMultipart, ReqBodyMultipart, runReq, defaultHttpConfig,
+    (=:), reqBodyMultipart, ReqBodyMultipart, runReq, defaultHttpConfig, responseBody,
  )
 
 import Data.ByteString as BS
@@ -23,6 +23,8 @@ import Data.Text (Text)
 import Network.HTTP.Client.MultipartFormData (partFile)
 import UnliftIO
 import System.Environment (getEnv)
+import Data.Aeson
+import SauceNaoTypes (SauceNaoResponse(SauceNaoResponse))
 
 b :: Text
 b = "x"
@@ -52,8 +54,19 @@ reqFor apikey = do
             <> ("api_key" =: apikey)
             <> (header "User-Agent" "curl/8.9.1")
 
-check :: IO BsResponse
+check :: IO ()
 check = do
     apikey <- _apikey
     r <- reqFor apikey
-    runReq defaultHttpConfig r
+    resp <- runReq defaultHttpConfig r
+    -- print resp
+
+    let x = responseBody resp
+    -- BS.putStr x
+
+    let parsed :: Maybe SauceNaoResponse = decodeStrict x
+    print parsed
+
+    return ()
+
+
