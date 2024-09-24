@@ -18,6 +18,7 @@ executable sauce-archiver
     Cli
     SauceNao
     SauceNaoTypes
+    App
 
   default-extensions:
     , OverloadedStrings

@@ -1,37 +1,22 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-
 module Main (main) where
 
-import Control.Monad.IO.Class (MonadIO, liftIO)
-import Control.Monad.Logger (LoggingT, MonadLogger, logDebugN, logInfoN)
-import Control.Monad.Reader (MonadReader, ReaderT (runReaderT))
-import Log (runLog)
-import UnliftIO (MonadUnliftIO)
+import App
+import System.Environment (getEnv)
+import SauceNao
+import UnliftIO
 
-data Config = Config
-    { danbooru_username :: String
-    , danbooru_apikey :: String
-    , saucenao_apikey :: String
-    }
-    deriving (Show)
+app :: App ()
+app = do
+    res <- query _pic
+    liftIO $ print $ show res
 
-newtype App a = App
-    { unApp :: ReaderT Config (LoggingT IO) a
-    }
-    deriving newtype
-        (Functor, Applicative, Monad, MonadLogger, MonadReader Config, MonadIO, MonadUnliftIO)
-
-
-runApp :: Config -> App a -> IO a
-runApp config x = runLog $ runReaderT (unApp x) config
-
-
+    return ()
 
 main :: IO ()
 main = do
+    config <-
+        Config <$> getEnv "DANBOORU_USERNAME" <*> getEnv "DANBOORU_APIKEY" <*> getEnv "SAUCENAO_APIKEY"
+
+    runApp config app
 
     return ()

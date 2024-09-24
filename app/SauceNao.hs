@@ -8,41 +8,45 @@ import Network.HTTP.Req (
     NoReqBody (NoReqBody),
     POST (POST),
     QueryParam (queryParam),
+    ReqBodyMultipart,
     Scheme,
     Url,
     bsResponse,
+    defaultHttpConfig,
     header,
     https,
     req,
+    reqBodyMultipart,
+    responseBody,
+    runReq,
     (/:),
-    (=:), reqBodyMultipart, ReqBodyMultipart, runReq, defaultHttpConfig, responseBody,
+    (=:),
  )
 
+import App (App, Config (saucenao_apikey))
+import Control.Monad.Logger (logDebugN, logInfo)
+import Data.Aeson
 import Data.ByteString as BS
 import Data.Text (Text)
+import qualified Data.Text as T
 import Network.HTTP.Client.MultipartFormData (partFile)
-import UnliftIO
+import SauceNaoTypes (SauceNaoResponse (SauceNaoResponse))
 import System.Environment (getEnv)
-import Data.Aeson
-import SauceNaoTypes (SauceNaoResponse(SauceNaoResponse))
+import UnliftIO
+import Control.Monad.Reader (ask)
 
 b :: Text
 b = "x"
 
-
-pic :: FilePath
-pic = "/var/home/ayats/Pictures/pic.jpg"
-
-multipart :: MonadIO m => m ReqBodyMultipart
-multipart = reqBodyMultipart [(partFile "file" pic)]
+_pic :: FilePath
+_pic = "/var/home/ayats/Pictures/pic.jpg"
 
 _apikey :: IO String
 _apikey = getEnv "SAUCENAO_APIKEY"
 
-reqFor :: (MonadHttp m, MonadIO i) => String -> i (m BsResponse)
-reqFor apikey = do
-    mp <- multipart
-    return $ req
+reqFor :: (MonadHttp m) => String -> ReqBodyMultipart -> m BsResponse
+reqFor apikey mp =
+    req
         POST
         (https "saucenao.com" /: "search.php")
         mp
@@ -54,19 +58,20 @@ reqFor apikey = do
             <> ("api_key" =: apikey)
             <> (header "User-Agent" "curl/8.9.1")
 
-check :: IO ()
-check = do
-    apikey <- _apikey
-    r <- reqFor apikey
-    resp <- runReq defaultHttpConfig r
-    -- print resp
+query :: FilePath -> App SauceNaoResponse
+query pic = do
+    config <- ask
+    let apikey = saucenao_apikey config
 
-    let x = responseBody resp
-    -- BS.putStr x
+    mp <- reqBodyMultipart [partFile "file" pic]
 
-    let parsed :: Maybe SauceNaoResponse = decodeStrict x
-    print parsed
+    logDebugN "querying saucenao"
+    r <- runReq defaultHttpConfig $ reqFor apikey mp
 
-    return ()
+    let body = responseBody r
+    let parsed :: Maybe SauceNaoResponse = decodeStrict body
+    logDebugN $ T.pack $ show parsed
 
-
+    case parsed of
+        Just res -> return res
+        Nothing -> throwString "Failed to parse"

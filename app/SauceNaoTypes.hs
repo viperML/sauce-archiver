@@ -11,8 +11,7 @@ import GHC.Generics
 import Text.Read (readMaybe)
 
 data SauceNaoResponse = SauceNaoResponse
-    { header :: Value
-    , results :: [SauceNaoResult]
+    { results :: [SauceNaoResult]
     }
     deriving (Generic, Show)
 
