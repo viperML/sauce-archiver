@@ -4,6 +4,11 @@ import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Logger
 import qualified Control.Monad.Logger as L
 import qualified Data.ByteString.Char8 as S8
+import qualified Data.List as List
+import Data.Maybe (catMaybes)
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
+import qualified GHC.Show as S8
 
 newtype Style = Style S8.ByteString
 
@@ -39,7 +44,20 @@ outputFor ::
     LogLevel ->
     LogStr ->
     IO ()
-outputFor loc source level s = S8.putStrLn $ formatLevel level <> " " <> fromLogStr s
+outputFor loc source level s =
+    let
+        (line, _) = loc.loc_start
+        unknown = loc.loc_filename == "<unknown>"
+     in
+        S8.putStrLn
+            $ mconcat
+            $ List.intersperse
+                " "
+            $ catMaybes
+                [ Just (formatLevel level)
+                , if unknown then Nothing else Just (S8.pack (loc.loc_filename <> ":" <> show line))
+                , Just (fromLogStr s)
+                ]
 
 runLog :: (MonadIO m) => LoggingT m a -> m a
 runLog action =

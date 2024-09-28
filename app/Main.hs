@@ -1,8 +1,9 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Main (main) where
 
 import App
 import Cli
-import Control.Monad.Logger (logInfoN)
 import Danbooru (favPost)
 import qualified Data.Text as T
 import SauceNao
@@ -15,7 +16,9 @@ app :: App ()
 app = do
     o <- liftIO options
     let f = file o
-    -- $(logInfo) "Starting"
+    $(logInfo) "Starting"
+    logInfoN "Other"
+    _ <- throwString "FIXME"
 
     sauceResult <- querySauceNao f
 
