@@ -1,23 +1,18 @@
-module Cli (CliOptions, options) where
+module Cli (CliOptions(..), options) where
 
 import Options.Applicative
 
 data CliOptions = CliOptions
-    { verbose :: Bool
-    , dir :: String
+    { file :: FilePath
     }
     deriving (Show)
 
 parser :: Parser CliOptions
 parser =
     CliOptions
-        <$> switch
-            ( long "verbose"
-                <> short 'v'
-            )
-        <*> strOption
-            ( long "dir"
-                <> short 'd'
+        <$> strOption
+            ( long "file"
+                <> short 'f'
             )
 
 options :: IO CliOptions
@@ -29,8 +24,3 @@ options =
                 <> progDesc "Short desc"
                 <> header "header"
             )
-
-x :: CliOptions
-x = CliOptions False ""
-
-y = x.verbose

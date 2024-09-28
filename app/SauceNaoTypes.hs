@@ -22,7 +22,12 @@ data SauceNaoHeader = SauceNaoHeader
     }
     deriving (Generic, Show)
 
-instance FromJSON SauceNaoHeader
+instance FromJSON SauceNaoHeader where
+    parseJSON (Object o) =
+        SauceNaoHeader
+            <$> (o .: "short_remaining")
+            <*> (o .: "long_remaining")
+    parseJSON _ = mzero
 
 data SauceNaoResult = SauceNaoResult
     { similarity :: Double

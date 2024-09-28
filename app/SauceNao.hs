@@ -25,18 +25,16 @@ import Network.HTTP.Req (
 
 import App (App, Config (saucenao_apikey))
 import Control.Monad.Logger (logDebugN, logInfo)
+import Control.Monad.Reader (ask)
 import Data.Aeson
 import Data.ByteString as BS
 import Data.Text (Text)
 import qualified Data.Text as T
+import Data.Text.Encoding (decodeUtf8)
 import Network.HTTP.Client.MultipartFormData (partFile)
 import SauceNaoTypes (SauceNaoResponse (SauceNaoResponse))
 import System.Environment (getEnv)
 import UnliftIO
-import Control.Monad.Reader (ask)
-
-b :: Text
-b = "x"
 
 _pic :: FilePath
 _pic = "/var/home/ayats/Pictures/pic.jpg"
@@ -44,29 +42,31 @@ _pic = "/var/home/ayats/Pictures/pic.jpg"
 _apikey :: IO String
 _apikey = getEnv "SAUCENAO_APIKEY"
 
-reqFor :: (MonadHttp m) => String -> ReqBodyMultipart -> m BsResponse
-reqFor apikey mp =
-    req
-        POST
-        (https "saucenao.com" /: "search.php")
-        mp
-        bsResponse
-        $ ("output_type" =: ("2" :: String))
-            <> ("numres" =: ("1" :: String))
-            <> ("minsim" =: ("85" :: String))
-            <> ("db" =: ("9" :: String))
-            <> ("api_key" =: apikey)
-            <> (header "User-Agent" "curl/8.9.1")
+minimumSimilarity :: Double
+minimumSimilarity = 85.0
 
-query :: FilePath -> App SauceNaoResponse
-query pic = do
+querySauceNao :: FilePath -> App SauceNaoResponse
+querySauceNao path = do
     config <- ask
-    let apikey = saucenao_apikey config
+    let apikey = config.saucenao_apikey
 
-    mp <- reqBodyMultipart [partFile "file" pic]
+    body <- reqBodyMultipart [partFile "file" path]
 
     logDebugN "querying saucenao"
-    r <- runReq defaultHttpConfig $ reqFor apikey mp
+
+    r <-
+        runReq defaultHttpConfig
+            $ req
+                POST
+                (https "saucenao.com" /: "search.php")
+                body
+                bsResponse
+            $ ("output_type" =: ("2" :: String))
+                <> ("numres" =: ("1" :: String))
+                <> ("minsim" =: minimumSimilarity)
+                <> ("db" =: ("9" :: String))
+                <> ("api_key" =: apikey)
+                <> header "User-Agent" "curl/8.9.1"
 
     let body = responseBody r
     let parsed :: Maybe SauceNaoResponse = decodeStrict body
@@ -74,4 +74,4 @@ query pic = do
 
     case parsed of
         Just res -> return res
-        Nothing -> throwString "Failed to parse"
+        Nothing -> logDebugN (decodeUtf8 body) >> throwString "Failed to parse"
