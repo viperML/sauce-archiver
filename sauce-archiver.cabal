@@ -18,6 +18,7 @@ executable sauce-archiver
     Cli
     SauceNao
     SauceNaoTypes
+    Danbooru
     App
 
   default-extensions:
@@ -26,6 +27,7 @@ executable sauce-archiver
     , DuplicateRecordFields
     , ScopedTypeVariables
     , LambdaCase
+    , NumericUnderscores
 
   ghc-options: -Werror=incomplete-patterns
 

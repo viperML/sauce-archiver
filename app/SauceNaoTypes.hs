@@ -11,9 +11,18 @@ import GHC.Generics
 import Text.Read (readMaybe)
 
 data SauceNaoResponse = SauceNaoResponse
-    { results :: [SauceNaoResult]
+    { header :: SauceNaoHeader
+    , results :: [SauceNaoResult]
     }
     deriving (Generic, Show)
+
+data SauceNaoHeader = SauceNaoHeader
+    { shortRemaining :: Integer
+    , longRemaining :: Integer
+    }
+    deriving (Generic, Show)
+
+instance FromJSON SauceNaoHeader
 
 data SauceNaoResult = SauceNaoResult
     { similarity :: Double

@@ -4,11 +4,12 @@ import App
 import System.Environment (getEnv)
 import SauceNao
 import UnliftIO
+import Danbooru (favPost)
 
 app :: App ()
 app = do
-    res <- query _pic
-    liftIO $ print $ show res
+    post <- liftIO $ read <$> getEnv "POST"
+    favPost post
 
     return ()
 
