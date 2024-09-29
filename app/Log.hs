@@ -1,42 +1,39 @@
 module Log where
 
+import Control.Monad (unless, when)
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Logger
 import qualified Control.Monad.Logger as L
 import qualified Data.ByteString.Char8 as S8
-import qualified Data.List as List
-import Data.Maybe (catMaybes)
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
-import qualified GHC.Show as S8
+import System.Console.ANSI
 
-newtype Style = Style S8.ByteString
+withSGR :: [SGR] -> IO () -> IO ()
+withSGR style action = setSGR style >> action >> setSGR [Reset]
 
-ansiBlue :: Style
-ansiBlue = Style "34"
+printLevel :: LogLevel -> IO ()
+printLevel level = do
+    putStr "["
+    case level of
+        L.LevelError -> withSGR [SetColor Foreground Dull Red] (putStr "WARN")
+        L.LevelWarn -> withSGR [SetColor Foreground Dull Yellow] (putStr "WARN")
+        L.LevelInfo -> withSGR [SetColor Foreground Dull Green] (putStr "INFO")
+        L.LevelDebug -> withSGR [SetColor Foreground Dull Blue] (putStr "DEBUG")
+        _ -> withSGR [SetColor Foreground Vivid Black] (putStr "OTHER")
+    putStr "]"
 
-ansiGreen :: Style
-ansiGreen = Style "32"
-
-ansiRed :: Style
-ansiRed = Style "31"
-
-withStyle :: Style -> S8.ByteString -> S8.ByteString
-withStyle style input = "\x001B" <> "[" <> s <> "m" <> input <> "\x001B[0m"
-  where
-    Style s = style
-
-formatLevel :: LogLevel -> S8.ByteString
-formatLevel level =
-    "["
-        <> ( case level of
-                L.LevelWarn -> withStyle ansiRed "WARN"
-                L.LevelDebug -> withStyle ansiBlue "DEBUG"
-                L.LevelInfo -> withStyle ansiGreen "INFO"
-                L.LevelError -> withStyle ansiRed "ERROR"
-                L.LevelOther _ -> withStyle ansiBlue "OTHER"
-           )
-        <> "]"
+printLoc :: Loc -> IO ()
+printLoc loc = do
+    let (line, _) = loc.loc_start
+    let unknown = loc.loc_filename == "<unknown>"
+    unless
+        unknown
+        $ do
+            setSGR [SetColor Foreground Vivid Black]
+            putStr " "
+            putStr loc.loc_filename
+            putStr ":"
+            putStr $ show line
+            setSGR [Reset]
 
 outputFor ::
     Loc ->
@@ -44,20 +41,11 @@ outputFor ::
     LogLevel ->
     LogStr ->
     IO ()
-outputFor loc source level s =
-    let
-        (line, _) = loc.loc_start
-        unknown = loc.loc_filename == "<unknown>"
-     in
-        S8.putStrLn
-            $ mconcat
-            $ List.intersperse
-                " "
-            $ catMaybes
-                [ Just (formatLevel level)
-                , if unknown then Nothing else Just (S8.pack (loc.loc_filename <> ":" <> show line))
-                , Just (fromLogStr s)
-                ]
+outputFor loc source level s = do
+    printLevel level
+    printLoc loc
+    putStr " "
+    S8.putStrLn (fromLogStr s)
 
 runLog :: (MonadIO m) => LoggingT m a -> m a
 runLog action =

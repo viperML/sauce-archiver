@@ -45,3 +45,4 @@ executable sauce-archiver
     , http-client
     , aeson
     , unliftio
+    , ansi-terminal

@@ -2,37 +2,15 @@
 
 module SauceNao where
 
-import Network.HTTP.Req (
-    BsResponse,
-    MonadHttp,
-    NoReqBody (NoReqBody),
-    POST (POST),
-    QueryParam (queryParam),
-    ReqBodyMultipart,
-    Scheme,
-    Url,
-    bsResponse,
-    defaultHttpConfig,
-    header,
-    https,
-    req,
-    reqBodyMultipart,
-    responseBody,
-    runReq,
-    (/:),
-    (=:),
- )
-
-import App (App, Config (saucenao_apikey))
-import Control.Monad.Logger (logDebugN, logInfo)
+import App
+import Control.Monad.Logger.CallStack
 import Control.Monad.Reader (ask)
 import Data.Aeson
-import Data.ByteString as BS
-import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf8)
 import Network.HTTP.Client.MultipartFormData (partFile)
-import SauceNaoTypes (SauceNaoResponse (SauceNaoResponse))
+import Network.HTTP.Req
+import SauceNaoTypes hiding (header)
 import System.Environment (getEnv)
 import UnliftIO
 
@@ -52,7 +30,7 @@ querySauceNao path = do
 
     body <- reqBodyMultipart [partFile "file" path]
 
-    logDebugN "querying saucenao"
+    logDebug $ "Querying saucenao for " <> T.pack (show path)
 
     r <-
         runReq defaultHttpConfig
