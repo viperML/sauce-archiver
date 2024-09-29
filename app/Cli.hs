@@ -1,22 +1,34 @@
-module Cli (CliOptions(..), options) where
+module Cli (CliOptions (..), getCliOptions) where
 
 import Options.Applicative
 
 data CliOptions = CliOptions
-    { file :: FilePath
+    { inputFolder :: Maybe FilePath
+    , sauceFolder :: Maybe FilePath
+    , noSauceFolder :: Maybe FilePath
     }
     deriving (Show)
 
 parser :: Parser CliOptions
 parser =
     CliOptions
-        <$> strOption
-            ( long "file"
-                <> short 'f'
+        <$> optional
+            ( strOption
+                ( long "input_folder"
+                    <> short 'i'
+                )
+            )
+        <*> optional
+            ( strOption
+                (long "sauce_folder" <> short 's')
+            )
+        <*> optional
+            ( strOption
+                (long "no_sauce_folder" <> short 'S')
             )
 
-options :: IO CliOptions
-options =
+getCliOptions :: IO CliOptions
+getCliOptions =
     execParser $
         info
             (parser <**> helper)

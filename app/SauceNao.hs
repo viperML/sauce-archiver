@@ -26,7 +26,7 @@ minimumSimilarity = 85.0
 querySauceNao :: FilePath -> App SauceNaoResponse
 querySauceNao path = do
     config <- ask
-    let apikey = config.saucenao_apikey
+    let apikey = config.saucenaoApikey
 
     body <- reqBodyMultipart [partFile "file" path]
 
@@ -46,10 +46,10 @@ querySauceNao path = do
                 <> ("api_key" =: apikey)
                 <> header "User-Agent" "curl/8.9.1"
 
-    let body = responseBody r
-    let parsed :: Maybe SauceNaoResponse = decodeStrict body
-    logDebugN $ T.pack $ show parsed
+    let b = responseBody r
+    let parsed :: Maybe SauceNaoResponse = decodeStrict b
+    logDebug $ T.pack (show parsed)
 
     case parsed of
         Just res -> return res
-        Nothing -> logDebugN (decodeUtf8 body) >> throwString "Failed to parse"
+        Nothing -> logDebug (decodeUtf8 b) >> throwString "Failed to parse"

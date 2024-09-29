@@ -13,9 +13,12 @@ import Log (runLog)
 import UnliftIO (MonadUnliftIO)
 
 data Config = Config
-    { danbooru_username :: String
-    , danbooru_apikey :: String
-    , saucenao_apikey :: String
+    { danbooruUsername :: String
+    , danbooruApikey :: String
+    , saucenaoApikey :: String
+    , inputFolder :: FilePath
+    , sauceFolder :: FilePath
+    , noSauceFolder :: FilePath
     }
     deriving (Show)
 

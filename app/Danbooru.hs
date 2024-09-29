@@ -1,30 +1,29 @@
 module Danbooru where
 
-import App (App, Config (danbooru_apikey, danbooru_username))
+import App
+import Control.Monad.Logger.CallStack
 import Control.Monad.Reader
-import Network.HTTP.Req
-import Control.Monad.Logger (logInfoN)
 import Data.Text.Encoding (decodeUtf8)
+import Network.HTTP.Req
 
 favPost :: Integer -> App ()
 favPost postId = do
     config <- ask
 
-    let r =
-            req
+    response <-
+        runReq defaultHttpConfig
+            $ req
                 POST
                 (https "danbooru.donmai.us" /: "favorites.json")
                 NoReqBody
                 bsResponse
-                $ ("post_id" =: show postId)
-                    <> ("login" =: danbooru_username config)
-                    <> ("api_key" =: danbooru_apikey config)
-                    <> header "User-Agent" "curl/8.9.1"
-                    <> header "Content-Type" "application/json"
+            $ ("post_id" =: show postId)
+                <> ("login" =: danbooruUsername config)
+                <> ("api_key" =: danbooruApikey config)
+                <> header "User-Agent" "curl/8.9.1"
+                <> header "Content-Type" "application/json"
 
-    response <- runReq defaultHttpConfig r
-    let body = responseBody response
-    let t = decodeUtf8 body
-    logInfoN t
+    let resp = decodeUtf8 (responseBody response)
+    logDebug $ "Danbooru response: " <> resp
 
     return ()

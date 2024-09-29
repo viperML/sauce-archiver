@@ -2,40 +2,35 @@ module Main (main) where
 
 import App
 import Cli
-import Danbooru (favPost)
+import Control.Monad (forM_)
+import Control.Monad.Logger.CallStack
+import Control.Monad.Reader (ask)
+import Data.Maybe (fromMaybe)
 import qualified Data.Text as T
-import SauceNao
-import SauceNaoTypes
 import System.Environment (getEnv)
 import UnliftIO
-import Control.Monad.Logger.CallStack
+import UnliftIO.Directory
 
-app :: App ()
-app = do
-    o <- liftIO options
-    let f = file o
-    logInfo "Starting"
-    logInfo "Other"
+main' :: App ()
+main' = do
+    config <- ask
+    logInfo $ T.pack (show config)
 
-    _ <- throwString "FIXME"
-
-    sauceResult <- querySauceNao f
-
-    let first = head sauceResult.results
-
-    logInfoN (T.pack $ show first)
-
-    if first.similarity >= minimumSimilarity
-        then logInfoN "Faving" >> favPost first.id
-        else throwString "Similarty wasn't greater than min"
-
-    return ()
+    files <- listDirectory config.inputFolder
+    forM_ files $ \f -> do
+        logInfo $ "Tagging: " <> T.pack (show f)
 
 main :: IO ()
 main = do
+    cli <- getCliOptions
+
     config <-
-        Config <$> getEnv "DANBOORU_USERNAME" <*> getEnv "DANBOORU_APIKEY" <*> getEnv "SAUCENAO_APIKEY"
+        Config
+            <$> getEnv "DANBOORU_USERNAME"
+            <*> getEnv "DANBOORU_APIKEY"
+            <*> getEnv "SAUCENAO_APIKEY"
+            <*> return (fromMaybe "CAG_INPUT" cli.inputFolder)
+            <*> return (fromMaybe "CAG_SAUCE" cli.sauceFolder)
+            <*> return (fromMaybe "CAG_NOSAUCE" cli.noSauceFolder)
 
-    runApp config app
-
-    return ()
+    runApp config main'
