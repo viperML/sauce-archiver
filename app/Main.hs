@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module Main (main) where
 
 import App
@@ -10,14 +8,15 @@ import SauceNao
 import SauceNaoTypes
 import System.Environment (getEnv)
 import UnliftIO
-import Control.Monad.Logger
+import Control.Monad.Logger.CallStack
 
 app :: App ()
 app = do
     o <- liftIO options
     let f = file o
-    $(logInfo) "Starting"
-    logInfoN "Other"
+    logInfo "Starting"
+    logInfo "Other"
+
     _ <- throwString "FIXME"
 
     sauceResult <- querySauceNao f
