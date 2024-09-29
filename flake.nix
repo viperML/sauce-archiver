@@ -61,6 +61,7 @@
             haskellPackages.cabal-install
             haskellPackages.haskell-language-server
             haskellPackages.fast-tags
+            pkgs.yaml-language-server
           ];
         };
     });

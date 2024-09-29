@@ -10,17 +10,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Install Nix
+      - name: ❄️ Install Nix
         uses: DeterminateSystems/nix-installer-action@main
         with:
           extra-conf: |
             allow-import-from-derivation = true
 
-      - name: Install Magic Nix Cache
+      - name: 📦 Install Magic Nix Cache
         uses: DeterminateSystems/magic-nix-cache-action@main
 
-      - run: nix build github:$GITHUB_REPOSITORY/$GITHUB_SHA -L
-        name: Regular build
-
-      - run: nix build github:$GITHUB_REPOSITORY/$GITHUB_SHA#static -L
-        name: Static build
+      - name: 🏗️ Regular build
+        run: |
+          nix build "github:$GITHUB_REPOSITORY?ref=$GITHUB_SHA#haskellPackages.sauce-archiver" -L
