@@ -24,6 +24,6 @@ favPost postId = do
                 <> header "Content-Type" "application/json"
 
     let resp = decodeUtf8 (responseBody response)
-    logDebug $ "Danbooru response: " <> resp
+    -- logDebug $ "Danbooru response: " <> resp
 
     return ()

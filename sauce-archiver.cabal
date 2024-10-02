@@ -28,6 +28,7 @@ executable sauce-archiver
     , ScopedTypeVariables
     , LambdaCase
     , NumericUnderscores
+    , NamedFieldPuns
 
   ghc-options: -Werror=incomplete-patterns
 
@@ -46,3 +47,4 @@ executable sauce-archiver
     , aeson
     , unliftio
     , ansi-terminal
+    , filepath
